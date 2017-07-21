@@ -23,7 +23,7 @@ eval_data, eval_y = gen_rhs(10)
 #print(y.shape)
 #print(y[2])
 
-train_set = ArrayIterator(X=train_data, y=data_y, nclass=2)
+train_set = ArrayIterator(X=train_data, y=data_y, lshape = (1, 25, 25, 25))
 valid_set = ArrayIterator(X=eval_data, y=eval_y, nclass=2)
 
 # setup weight initialization function
@@ -37,15 +37,19 @@ conv2 = dict(init=init, batch_norm=True, activation=lrelu, padding=2)
 conv3 = dict(init=init, batch_norm=True, activation=lrelu, padding=1)
 D_layers = [Conv((5, 5, 5, 32), **conv1),
             Dropout(keep = 0.8),
+
             Conv((5, 5, 5, 8), **conv2),
             BatchNorm(),
             Dropout(keep = 0.8),
+
             Conv((5, 5, 5, 8), **conv2),
             BatchNorm(),
             Dropout(keep = 0.8),
+
             Conv((5, 5, 5, 8), **conv3),
             BatchNorm(),
             Dropout(keep = 0.8),
+
             Pooling((2, 2, 2)),
             # what's about the Flatten Layer?
             Linear(1, init=init)] #what's about the activation function?
@@ -59,11 +63,15 @@ conv5 = dict(init=init, batch_norm=True, activation=lrelu, padding=dict(pad_h=2,
 conv6 = dict(init=init, batch_norm=False, activation=lrelu, padding=dict(pad_h=1, pad_w=0, pad_d=3))
 G_layers = [Linear(64 * 7 * 7, init=init), # what's about the input volume
             Reshape((7, 7, 8, 8)), 
+
             Conv((6, 6, 8, 64), **conv4),
             BatchNorm(),
+
             Conv((6, 5, 8, 6), **conv5),
             BatchNorm(),
+
             Conv((3, 3, 8, 6), **conv6), 
+
             Conv((2, 2, 2, 1), init=init, batch_norm=False, activation=relu)]
             # what's about the Embedding layer
 
