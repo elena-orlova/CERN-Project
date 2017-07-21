@@ -22,3 +22,4 @@ def gen_rhs(size):
         #labels[i] = 0.5 * (np.sqrt(kx) + np.sqrt(ky) + np.sqrt(kz))
 
     return features.reshape((size, 25 * 25 * 25)).astype(np.float32), labels.astype(np.float32)
+
