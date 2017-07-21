@@ -11,17 +11,20 @@ from neon.transforms import Rectlin, Logistic, GANCost
 from neon.util.argparser import NeonArgparser
 from neon.util.persist import ensure_dirs_exist
 from neon.layers.layer import Dropout
+from neon.data.dataiterator import ArrayIterator
+from gen_data import gen_rhs 
 
-# parse the command line arguments
-parser = NeonArgparser(__doc__)
-parser.add_argument('--kbatch', type=int, default=1,
-                    help='number of data batches per noise batch in training')
-args = parser.parse_args()
+import numpy as np
 
 # load up the data set
-dataset = MNIST(path=args.data_dir, size=27)
-train_set = dataset.train_iter
-valid_set = dataset.valid_iter
+train_data, data_y = gen_rhs(100)
+eval_data, eval_y = gen_rhs(10)
+#print(X.shape)
+#print(y.shape)
+#print(y[2])
+
+train_set = ArrayIterator(X=train_data, y=data_y, nclass=2)
+valid_set = ArrayIterator(X=eval_data, y=eval_y, nclass=2)
 
 # setup weight initialization function
 init = Gaussian()
@@ -78,24 +81,21 @@ layers = GenerativeAdversarial(generator=Sequential(G_layers, name="Generator"),
 # setup cost function as Binary CrossEntropy
 cost = GeneralizedGANCost(costfunc=GANCost(func="original"))
 
-nb_epochs = 50
+nb_epochs = 2
 batch_size = 100
 latent_size = 200
 nb_classes = 2
+nb_test = 100
 
 # initialize model
 noise_dim = np.random.normal(0, 1, (2 * nb_test, latent_size))
-gan = GAN(layers=layers, noise_dim=noise_dim, k=args.kbatch)
+gan = GAN(layers=layers, noise_dim=noise_dim)
 
 # configure callbacks
-callbacks = Callbacks(gan, eval_set=valid_set, **args.callback_args)
-fdir = ensure_dirs_exist(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'results/'))
-fname = os.path.splitext(os.path.basename(__file__))[0] +\
-    '_[' + datetime.now().strftime('%Y-%m-%d-%H-%M-%S') + ']'
-im_args = dict(filename=os.path.join(fdir, fname), hw=27,
-               num_samples=args.batch_size, nchan=1, sym_range=True)
-callbacks.add_callback(GANPlotCallback(**im_args))
+callbacks = Callbacks(gan, eval_set=valid_set, eval_freq=1)
 callbacks.add_callback(GANCostCallback())
+callbacks.add_save_best_state_callback("./best_state.pkl")
 
 # run fit
 gan.fit(train_set, num_epochs=nb_epochs, cost=cost, callbacks=callbacks)
+
