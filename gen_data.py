@@ -6,7 +6,7 @@ def osc(x, y, z, kx, ky, kz, cx, cy, cz):
 
 def gen_rhs(size):
     features = np.zeros((size, 25, 25, 25, 1))
-    labels = np.zeros(size)
+    labels = np.zeros(size, dtype=int)
     x = np.linspace(-20, 20, 25)
     xx, yy = np.meshgrid(x, x)
     yy, zz = np.meshgrid(x, x)
@@ -22,4 +22,3 @@ def gen_rhs(size):
         #labels[i] = 0.5 * (np.sqrt(kx) + np.sqrt(ky) + np.sqrt(kz))
 
     return features.reshape((size, 25 * 25 * 25)).astype(np.float32), labels.astype(np.float32)
-
