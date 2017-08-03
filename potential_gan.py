@@ -18,12 +18,14 @@ from neon.backends import gen_backend
 from temporary_utils import temp_3Ddata
 import numpy as np
 from sklearn.cross_validation import train_test_split
+import matplotlib.pyplot as plt
+import h5py
 
 # load up the data set
 X, y = temp_3Ddata()
 print(X.shape, 'X shape')
 #print(X[0])
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.9)
+X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.9, random_state=42)
 print(X_train.shape, 'X train shape')
 print(y_train.shape, 'y train shape')
 
@@ -57,7 +59,7 @@ D_layers = [
             ] #what's about the activation function?
 
 # generator using convolution layers
-init_gen = Gaussian(scale=0.001)
+init_gen = Gaussian(scale=0.0001)
 relu = Rectlin(slope=0)  # relu for generator
 pad1 = dict(pad_h=2, pad_w=2, pad_d=2)
 str1 = dict(str_h=2, str_w=2, str_d=2)
@@ -88,14 +90,14 @@ optimizer = GradientDescentMomentum(learning_rate=1e-6, momentum_coef = 0.9)
 # setup cost function as Binary CrossEntropy
 cost = GeneralizedGANCost(costfunc=GANCost(func="modified"))
 
-nb_epochs = 30
+nb_epochs = 15
 batch_size = 100
 latent_size = 200
 inb_classes = 2
 nb_test = 100
 
 # initialize model
-noise_dim = (100)
+noise_dim = (latent_size)
 gan = GAN(layers=layers, noise_dim=noise_dim)
 
 # configure callbacks
@@ -106,3 +108,17 @@ callbacks.add_save_best_state_callback("./best_state.pkl")
 # run fit
 gan.fit(train_set, num_epochs=nb_epochs, optimizer=optimizer,
         cost=cost, callbacks=callbacks)
+
+x_new = np.random.rand(100, latent_size)
+inference_set = ArrayIterator(x_new, None, nclass=2, lshape=(latent_size))
+generator = Model(gan.layers.generator)
+test = generator.get_outputs(inference_set)
+print(test.shape, 'generator outputs')
+
+imgs = test.reshape((100, 25, 25, 25))
+print(test.shape, 'output images')
+h5f = h5py.File('output_data.h5', 'w')
+h5f.create_dataset('dataset_1', data=imgs)
+
+#plt.imshow(imgs[0, :, 12, :])
+#plt.imshow(imgs[9, :, 12, :])ы
