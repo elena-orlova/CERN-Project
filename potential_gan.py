@@ -23,7 +23,9 @@ import h5py
 
 # load up the data set
 X, y = temp_3Ddata()
+X[X < 1e-6] = 0
 print(X.shape, 'X shape')
+print(np.max(X),'max element')
 #print(X[0])
 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.9, random_state=42)
 print(X_train.shape, 'X train shape')
@@ -43,8 +45,8 @@ init = Gaussian(scale=0.0001)
 lrelu = Rectlin(slope=0.1)  # leaky relu for discriminator
 # sigmoid = Logistic() # sigmoid activation function
 conv1 = dict(init=init, batch_norm=False, activation=lrelu) # what's about BatchNorm Layer and batch_norm parameter?
-conv2 = dict(init=init, batch_norm=True, activation=lrelu, padding=2)
-conv3 = dict(init=init, batch_norm=True, activation=Logistic(), padding=1)
+conv2 = dict(init=init, batch_norm=False, activation=lrelu, padding=2)
+conv3 = dict(init=init, batch_norm=False, activation=Logistic(), padding=1)
 D_layers = [
             Conv((5, 5, 5, 32), **conv1),
             Dropout(keep = 0.8),
@@ -66,13 +68,13 @@ init_gen = Gaussian(scale=0.0001)
 relu = Rectlin(slope=0)  # relu for generator
 pad1 = dict(pad_h=2, pad_w=2, pad_d=2)
 str1 = dict(str_h=2, str_w=2, str_d=2)
-conv1 = dict(init=init_gen, batch_norm=True, activation=lrelu, padding=pad1, strides=str1)
+conv1 = dict(init=init_gen, batch_norm=False, activation=lrelu, padding=pad1, strides=str1)
 pad2 = dict(pad_h=2, pad_w=2, pad_d=2)
 str2 = dict(str_h=2, str_w=2, str_d=2)
-conv2 = dict(init=init_gen, batch_norm=True, activation=lrelu, padding=pad2, strides=str2)
+conv2 = dict(init=init_gen, batch_norm=False, activation=lrelu, padding=pad2, strides=str2)
 pad3 = dict(pad_h=0, pad_w=0, pad_d=0)
 str3 = dict(str_h=1, str_w=1, str_d=1)
-conv3 = dict(init=init_gen, batch_norm=True, activation=lrelu, padding=pad3, strides=str3)
+conv3 = dict(init=init_gen, batch_norm=False, activation=Logistic(), padding=pad3, strides=str3)
 G_layers = [
             Affine(8 * 7 * 7 * 7, init=init),
             Reshape((8, 7, 7, 7)),
@@ -87,13 +89,13 @@ layers = GenerativeAdversarial(generator=Sequential(G_layers, name="Generator"),
                                discriminator=Sequential(D_layers, name="Discriminator"))
 
 # setup optimizer
-# optimizer = RMSProp(learning_rate=1e-5, decay_rate=0.9, epsilon=1e-8)
-optimizer = GradientDescentMomentum(learning_rate=1e-6, momentum_coef = 0.9)
+#optimizer = RMSProp(learning_rate=1e-5, decay_rate=0.9, epsilon=1e-8)
+optimizer = GradientDescentMomentum(learning_rate=1e-4, momentum_coef = 0.9)
 
 # setup cost function as Binary CrossEntropy
 cost = GeneralizedGANCost(costfunc=GANCost(func="modified"))
 
-nb_epochs = 15
+nb_epochs = 30
 batch_size = 100
 latent_size = 200
 inb_classes = 2
@@ -104,7 +106,7 @@ noise_dim = (latent_size)
 gan = GAN(layers=layers, noise_dim=noise_dim)
 
 # configure callbacks
-allbacks = Callbacks(gan, eval_set=valid_set)
+callbacks = Callbacks(gan, eval_set=valid_set)
 callbacks.add_callback(GANCostCallback())
 #callbacks.add_save_best_state_callback("./best_state.pkl")
 
