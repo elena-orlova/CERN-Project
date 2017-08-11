@@ -24,9 +24,13 @@ import h5py
 # load up the data set
 X, y = temp_3Ddata()
 X[X < 1e-6] = 0
-print(X.shape, 'X shape')
+# mean = np.mean(X, axis=0, keepdims=True)
 print(np.max(X),'max element')
-#print(X[0])
+print(np.min(X),'min element')
+# X -= mean
+print(X.shape, 'X shape')
+#print(np.max(X),'max element')
+#print(np.min(X),'min element')
 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.9, random_state=42)
 print(X_train.shape, 'X train shape')
 print(y_train.shape, 'y train shape')
@@ -39,14 +43,14 @@ valid_set = ArrayIterator(X=X_test, y=y_test, nclass=2)
 #plt.savefigure('data_img.png')
 
 # setup weight initialization function
-init = Gaussian(scale=0.0001)
+init = Gaussian(scale=0.01)
 
 # discriminiator using convolution layers
 lrelu = Rectlin(slope=0.1)  # leaky relu for discriminator
 # sigmoid = Logistic() # sigmoid activation function
-conv1 = dict(init=init, batch_norm=False, activation=lrelu) # what's about BatchNorm Layer and batch_norm parameter?
-conv2 = dict(init=init, batch_norm=False, activation=lrelu, padding=2)
-conv3 = dict(init=init, batch_norm=False, activation=Logistic(), padding=1)
+conv1 = dict(init=init, batch_norm=False, activation=lrelu, bias=init)
+conv2 = dict(init=init, batch_norm=False, activation=lrelu, padding=2, bias=init)
+conv3 = dict(init=init, batch_norm=False, activation=Logistic(), padding=1, bias=init)
 D_layers = [
             Conv((5, 5, 5, 32), **conv1),
             Dropout(keep = 0.8),
@@ -60,43 +64,47 @@ D_layers = [
             BatchNorm(),
             Dropout(keep = 0.8),
             Pooling((2, 2, 2)),
-            Affine(1, init=init, activation=Logistic())
+            Affine(512, init=init),
+            Affine(512, init=init, bias=init),
+            Affine(1, init=init, bias=init, activation=Logistic())
             ]
 
 # generator using convolution layers
-init_gen = Gaussian(scale=0.0001)
+init_gen = Gaussian(scale=0.01)
 relu = Rectlin(slope=0)  # relu for generator
 pad1 = dict(pad_h=2, pad_w=2, pad_d=2)
 str1 = dict(str_h=2, str_w=2, str_d=2)
-conv1 = dict(init=init_gen, batch_norm=False, activation=lrelu, padding=pad1, strides=str1)
+conv1 = dict(init=init_gen, batch_norm=False, activation=lrelu, padding=pad1, strides=str1, bias=init_gen)
 pad2 = dict(pad_h=2, pad_w=2, pad_d=2)
 str2 = dict(str_h=2, str_w=2, str_d=2)
-conv2 = dict(init=init_gen, batch_norm=False, activation=lrelu, padding=pad2, strides=str2)
+conv2 = dict(init=init_gen, batch_norm=False, activation=lrelu, padding=pad2, strides=str2, bias=init_gen)
 pad3 = dict(pad_h=0, pad_w=0, pad_d=0)
 str3 = dict(str_h=1, str_w=1, str_d=1)
-conv3 = dict(init=init_gen, batch_norm=False, activation=Logistic(), padding=pad3, strides=str3)
+conv3 = dict(init=init_gen, batch_norm=False, activation=Logistic(), padding=pad3, strides=str3, bias=init_gen)
 G_layers = [
-            Affine(8 * 7 * 7 * 7, init=init),
+            Affine(8 * 7 * 7 * 7, init=init_gen, bias=init_gen),
             Reshape((8, 7, 7, 7)),
             Deconv((6, 6, 6, 6), **conv1), #14x14x14
             BatchNorm(),
+            # Linear(5 * 14 * 14 * 14, init=init),
+            # Reshape((5, 14, 14, 14)),
             Deconv((5, 5, 5, 64), **conv2), #27x27x27
             BatchNorm(),
             Conv((3, 3, 3, 1), **conv3)
-            ]
+           ]
 
 layers = GenerativeAdversarial(generator=Sequential(G_layers, name="Generator"),
                                discriminator=Sequential(D_layers, name="Discriminator"))
 
 # setup optimizer
-#optimizer = RMSProp(learning_rate=1e-5, decay_rate=0.9, epsilon=1e-8)
-optimizer = GradientDescentMomentum(learning_rate=1e-4, momentum_coef = 0.9)
+# optimizer = RMSProp(learning_rate=1e-5, decay_rate=0.9, epsilon=1e-8)
+optimizer = GradientDescentMomentum(learning_rate=1e-3, momentum_coef = 0.9)
+# optimizer = Adam(learning_rate=0.01)
 
 # setup cost function as Binary CrossEntropy
-cost = GeneralizedGANCost(costfunc=GANCost(func="modified"))
+cost = GeneralizedGANCost(costfunc=GANCost(func="original"))
 
-nb_epochs = 30
-batch_size = 100
+nb_epochs = 5
 latent_size = 200
 inb_classes = 2
 nb_test = 100
@@ -123,6 +131,7 @@ my_generator.save_params('our_gen.prm')
 my_discriminator = Model(gan.layers.discriminator)
 my_discriminator.save_params('our_disc.prm')
 test = my_generator.get_outputs(inference_set)
+# test += mean
 test =  test.reshape((100, 25, 25, 25))
 
 print(test.shape, 'generator output')
